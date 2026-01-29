@@ -26,13 +26,15 @@ const auditLogSchema = new mongoose.Schema({
             'LOGOUT',
             'REGISTER',
             'MFA_SETUP',
+            'MFA_ENABLED',
             'MFA_VERIFY',
             'CAPSULE_CREATE',
             'CAPSULE_VIEW',
             'CAPSULE_DELETE',
             'ROLE_CHANGE',
             'FAILED_LOGIN',
-            'FAILED_MFA'
+            'FAILED_MFA',
+            'FAILED_MFA_SETUP'
         ]
     },
     details: {

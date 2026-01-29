@@ -25,12 +25,13 @@ export default function CreateCapsule() {
         setError('');
         setSuccess('');
 
-        // Validate unlock date is in the future
+        // Validate unlock date is at least 3 minutes in the future
         const unlockDate = new Date(formData.unlockDate);
         const now = new Date();
+        const minTime = new Date(now.getTime() + 3 * 60 * 1000); // 3 minutes from now
 
-        if (unlockDate <= now) {
-            setError('Unlock date must be in the future');
+        if (unlockDate < minTime) {
+            setError('Unlock date must be at least 3 minutes in the future');
             return;
         }
 
@@ -56,11 +57,11 @@ export default function CreateCapsule() {
         }
     };
 
-    // Get minimum date (tomorrow)
-    const getMinDate = () => {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        return tomorrow.toISOString().slice(0, 16);
+    // Get minimum datetime (3 minutes from now)
+    const getMinDateTime = () => {
+        const minTime = new Date();
+        minTime.setMinutes(minTime.getMinutes() + 3);
+        return minTime.toISOString().slice(0, 16);
     };
 
     return (
@@ -113,10 +114,10 @@ export default function CreateCapsule() {
                             value={formData.unlockDate}
                             onChange={handleChange}
                             required
-                            min={getMinDate()}
+                            min={getMinDateTime()}
                         />
                         <small style={{ color: 'var(--text-muted)' }}>
-                            The capsule will remain locked until this date and time
+                            Minimum: 3 minutes from now. The capsule will unlock after this time.
                         </small>
                     </div>
 

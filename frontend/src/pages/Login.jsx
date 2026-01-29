@@ -31,13 +31,24 @@ export default function Login() {
         try {
             const response = await api.post('/auth/login', formData);
 
+            // Check if MFA setup is required (first-time login)
+            if (response.data.mfaSetupRequired) {
+                // Store setup token and redirect to MFA setup
+                localStorage.setItem('mfaSetupToken', response.data.setupToken);
+                navigate('/mfa-setup', { state: { mandatory: true } });
+                return;
+            }
+
+            // Check if MFA verification is required (returning user)
             if (response.data.mfaRequired) {
                 setMfaRequired(true);
                 setTempToken(response.data.tempToken);
-            } else {
-                login(response.data.token, response.data.user);
-                navigate('/dashboard');
+                return;
             }
+
+            // This should never happen now (MFA is mandatory)
+            login(response.data.token, response.data.user);
+            navigate('/dashboard');
 
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed');
@@ -51,16 +62,35 @@ export default function Login() {
         setError('');
         setLoading(true);
 
+        console.log('🔐 Submitting MFA verification...');
+        console.log('   tempToken exists:', !!tempToken);
+        console.log('   mfaCode:', mfaCode);
+
         try {
             const response = await api.post('/auth/verify-mfa', {
                 tempToken,
-                code: mfaCode
+                code: mfaCode.trim() // Ensure code is trimmed
             });
 
-            login(response.data.token, response.data.user);
-            navigate('/dashboard');
+            console.log('✅ MFA verification response:', response.data);
+
+            if (response.data.success && response.data.token) {
+                console.log('✅ Token received, logging in...');
+                login(response.data.token, response.data.user);
+
+                // Force a small delay to ensure state is updated
+                setTimeout(() => {
+                    console.log('✅ Navigating to dashboard...');
+                    navigate('/dashboard', { replace: true });
+                }, 100);
+            } else {
+                console.log('❌ Unexpected response:', response.data);
+                setError('Unexpected response from server');
+            }
 
         } catch (err) {
+            console.error('❌ MFA verification error:', err);
+            console.error('   Response:', err.response?.data);
             setError(err.response?.data?.message || 'MFA verification failed');
         } finally {
             setLoading(false);

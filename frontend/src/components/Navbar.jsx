@@ -4,6 +4,19 @@ import { useAuth } from '../context/AuthContext';
 export default function Navbar() {
     const { user, logout, isAuthenticated } = useAuth();
 
+    // Determine the correct dashboard link based on role
+    const getDashboardLink = () => {
+        if (user?.role === 'admin') return '/admin';
+        if (user?.role === 'auditor') return '/audit';
+        return '/dashboard';
+    };
+
+    const getDashboardLabel = () => {
+        if (user?.role === 'admin') return 'Admin Panel';
+        if (user?.role === 'auditor') return 'Audit Logs';
+        return 'Dashboard';
+    };
+
     return (
         <nav className="navbar">
             <div className="navbar-content">
@@ -14,14 +27,15 @@ export default function Navbar() {
                 <div className="navbar-menu">
                     {isAuthenticated ? (
                         <>
-                            <Link to="/dashboard" className="navbar-link">Dashboard</Link>
-                            <Link to="/create" className="navbar-link">Create Capsule</Link>
-                            {user?.role === 'admin' && (
-                                <Link to="/admin" className="navbar-link">Admin Panel</Link>
+                            <Link to={getDashboardLink()} className="navbar-link">
+                                {getDashboardLabel()}
+                            </Link>
+
+                            {/* Only show Create Capsule for regular users */}
+                            {user?.role === 'user' && (
+                                <Link to="/create" className="navbar-link">Create Capsule</Link>
                             )}
-                            {user?.role === 'auditor' && (
-                                <Link to="/audit-logs" className="navbar-link">Audit Logs</Link>
-                            )}
+
                             <span className={`badge badge-${user?.role}`}>{user?.role}</span>
                             <span className="navbar-link">{user?.username}</span>
                             <button onClick={logout} className="btn btn-secondary">Logout</button>

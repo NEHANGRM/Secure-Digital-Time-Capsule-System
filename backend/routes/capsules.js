@@ -37,12 +37,13 @@ router.post('/create', authenticate, requirePermission('canCreateCapsule'), asyn
             });
         }
 
-        // Validate unlock date is in the future
+        // Validate unlock date is at least 1 minute in the future (for demo purposes)
         const unlock = new Date(unlockDate);
-        if (unlock <= new Date()) {
+        const minTime = new Date(Date.now() + 60 * 1000); // 1 minute from now
+        if (unlock < minTime) {
             return res.status(400).json({
                 success: false,
-                message: 'Unlock date must be in the future.'
+                message: 'Unlock date must be at least 1 minute in the future.'
             });
         }
 

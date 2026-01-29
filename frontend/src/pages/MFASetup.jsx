@@ -1,25 +1,45 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 
 export default function MFASetup() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const { login } = useAuth();
     const [step, setStep] = useState(1);
     const [qrCode, setQrCode] = useState('');
     const [secret, setSecret] = useState('');
+    const [userId, setUserId] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isMandatory, setIsMandatory] = useState(false);
+    const [setupToken, setSetupToken] = useState('');
+
+    useEffect(() => {
+        // Check if this is mandatory MFA setup
+        const mandatory = location.state?.mandatory || false;
+        setIsMandatory(mandatory);
+
+        // Get setup token if it exists
+        const token = localStorage.getItem('mfaSetupToken');
+        if (token) {
+            setSetupToken(token);
+        }
+    }, [location]);
 
     const setupMFA = async () => {
         setLoading(true);
         setError('');
 
         try {
-            const response = await api.post('/auth/setup-mfa');
+            const payload = setupToken ? { setupToken } : {};
+            const response = await api.post('/auth/setup-mfa', payload);
             setQrCode(response.data.qrCode);
             setSecret(response.data.secret);
+            setUserId(response.data.userId);
             setStep(2);
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to setup MFA');
@@ -34,11 +54,28 @@ export default function MFASetup() {
         setError('');
 
         try {
-            await api.post('/auth/enable-mfa', { code: verificationCode });
-            setSuccess('MFA enabled successfully! Redirecting...');
-            setTimeout(() => {
-                navigate('/dashboard');
-            }, 2000);
+            const payload = {
+                code: verificationCode,
+                setupToken: setupToken || undefined,
+                userId: userId || undefined
+            };
+
+            const response = await api.post('/auth/enable-mfa', payload);
+
+            // If we got a token back, log the user in automatically
+            if (response.data.token) {
+                localStorage.removeItem('mfaSetupToken'); // Clean up
+                login(response.data.token, response.data.user);
+                setSuccess('MFA enabled successfully! Redirecting to dashboard...');
+                setTimeout(() => {
+                    navigate('/dashboard');
+                }, 2000);
+            } else {
+                setSuccess('MFA enabled successfully! Redirecting...');
+                setTimeout(() => {
+                    navigate('/dashboard');
+                }, 2000);
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to enable MFA');
         } finally {
@@ -50,6 +87,15 @@ export default function MFASetup() {
         <div className="container" style={{ maxWidth: '600px', marginTop: '2rem' }}>
             <div className="card">
                 <h1>🔐 Multi-Factor Authentication Setup</h1>
+                {isMandatory && (
+                    <div className="alert alert-warning" style={{ marginBottom: '1rem' }}>
+                        <strong>⚠️ MFA is Required</strong>
+                        <p style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                            For your security, Multi-Factor Authentication is mandatory for all users.
+                            You must complete this setup to access your account.
+                        </p>
+                    </div>
+                )}
                 <p style={{ marginBottom: '2rem' }}>
                     Add an extra layer of security to your account
                 </p>
@@ -84,13 +130,15 @@ export default function MFASetup() {
                             {loading ? 'Setting up...' : 'Start MFA Setup'}
                         </button>
 
-                        <button
-                            onClick={() => navigate('/dashboard')}
-                            className="btn btn-secondary"
-                            style={{ width: '100%', marginTop: '1rem' }}
-                        >
-                            Skip for Now
-                        </button>
+                        {!isMandatory && (
+                            <button
+                                onClick={() => navigate('/dashboard')}
+                                className="btn btn-secondary"
+                                style={{ width: '100%', marginTop: '1rem' }}
+                            >
+                                Skip for Now
+                            </button>
+                        )}
                     </div>
                 )}
 

@@ -1,17 +1,27 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 
 export default function Dashboard() {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [capsules, setCapsules] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
     useEffect(() => {
+        // Redirect based on role
+        if (user?.role === 'admin') {
+            navigate('/admin', { replace: true });
+            return;
+        }
+        if (user?.role === 'auditor') {
+            navigate('/audit', { replace: true });
+            return;
+        }
         fetchCapsules();
-    }, []);
+    }, [user, navigate]);
 
     const fetchCapsules = async () => {
         try {
