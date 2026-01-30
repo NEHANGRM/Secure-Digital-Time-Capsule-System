@@ -1,8 +1,12 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
     const { user, logout, isAuthenticated } = useAuth();
+    const location = useLocation();
+
+    // Hide entire navbar on home/login/register/mfa pages
+    const hideNavbar = ['/', '/login', '/register', '/mfa-setup'].includes(location.pathname);
 
     // Determine the correct dashboard link based on role
     const getDashboardLink = () => {
@@ -16,6 +20,11 @@ export default function Navbar() {
         if (user?.role === 'auditor') return 'Audit Logs';
         return 'Dashboard';
     };
+
+    // Don't render navbar at all on home/auth pages
+    if (hideNavbar) {
+        return null;
+    }
 
     return (
         <nav className="navbar">
