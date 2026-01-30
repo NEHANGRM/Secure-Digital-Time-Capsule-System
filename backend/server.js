@@ -18,7 +18,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const { generateRSAKeyPair } = require('./utils/crypto');
+const { generateECCKeyPair, generateRSAKeyPair } = require('./utils/crypto');
 
 // Initialize Express app
 const app = express();
@@ -97,8 +97,15 @@ async function startServer() {
         await mongoose.connect(MONGODB_URI);
         console.log('✅ MongoDB connected successfully');
 
-        // Generate RSA key pair for hybrid encryption
-        console.log('🔐 Generating RSA key pair...');
+        // Generate cryptographic key pairs
+        console.log('🔐 Initializing cryptographic keys...');
+
+        // Generate ECC key pair (primary - v2)
+        console.log('📐 Generating ECC P-256 key pair (v2)...');
+        generateECCKeyPair();
+
+        // Generate RSA key pair (legacy - v1)
+        console.log('🔑 Generating RSA-2048 key pair (v1 - backward compatibility)...');
         generateRSAKeyPair();
 
         // Start server
@@ -110,10 +117,11 @@ async function startServer() {
             console.log(`📡 Server running on: http://localhost:${PORT}`);
             console.log(`🗄️  Database: ${MONGODB_URI}`);
             console.log(`🔒 Security Features Enabled:`);
-            console.log('   ✓ RSA-2048 Key Pair (Hybrid Encryption)');
+            console.log('   ✓ ECC P-256 Key Pair (Hybrid Encryption v2) 🆕');
+            console.log('   ✓ RSA-2048 Key Pair (Legacy v1 Support)');
             console.log('   ✓ AES-256-CBC Encryption');
             console.log('   ✓ SHA-256 Hashing');
-            console.log('   ✓ Digital Signatures');
+            console.log('   ✓ Digital Signatures (ECDSA + RSA)');
             console.log('   ✓ JWT Authentication');
             console.log('   ✓ Multi-Factor Authentication (TOTP)');
             console.log('   ✓ Role-Based Access Control');

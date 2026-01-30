@@ -70,6 +70,13 @@ const capsuleSchema = new mongoose.Schema({
     },
     fileType: {
         type: String
+    },
+    // CRYPTO VERSION (for backward compatibility)
+    // v1 = RSA-2048 encryption, v2 = ECC P-256 encryption
+    cryptoVersion: {
+        type: String,
+        default: 'v2',
+        enum: ['v1', 'v2']
     }
 }, {
     timestamps: true
