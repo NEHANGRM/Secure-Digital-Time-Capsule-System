@@ -12,20 +12,42 @@
 
 const crypto = require('crypto');
 const QRCode = require('qrcode');
+const fs = require('fs');
+const path = require('path');
 
-// Global RSA key pair (generated on server startup)
+// Global RSA key pair (loaded from file or generated)
 let RSA_KEYS = null;
 
+// Path to store RSA keys
+const KEYS_DIR = path.join(__dirname, '..', 'keys');
+const KEYS_FILE = path.join(KEYS_DIR, 'rsa-keys.json');
+
 /**
- * SECURITY CONCEPT: RSA KEY PAIR GENERATION
+ * SECURITY CONCEPT: RSA KEY PAIR GENERATION (WITH PERSISTENCE)
  * 
  * Generates a 2048-bit RSA key pair for asymmetric encryption.
  * - Public key: Used to encrypt AES keys (can be shared)
  * - Private key: Used to decrypt AES keys and create digital signatures (must be kept secret)
  * 
+ * IMPORTANT: Keys are saved to file and reused across server restarts.
+ * This prevents decryption failures for existing capsules.
+ * 
  * This implements the KEY EXCHANGE mechanism for secure key distribution.
  */
 function generateRSAKeyPair() {
+    // Try to load existing keys first
+    if (fs.existsSync(KEYS_FILE)) {
+        try {
+            const keysData = fs.readFileSync(KEYS_FILE, 'utf8');
+            RSA_KEYS = JSON.parse(keysData);
+            console.log('✅ RSA Key Pair Loaded from file (existing keys)');
+            return RSA_KEYS;
+        } catch (error) {
+            console.warn('⚠️  Failed to load existing keys, generating new ones:', error.message);
+        }
+    }
+
+    // Generate new keys if none exist
     const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
         modulusLength: 2048,
         publicKeyEncoding: {
@@ -39,7 +61,18 @@ function generateRSAKeyPair() {
     });
 
     RSA_KEYS = { publicKey, privateKey };
-    console.log('✅ RSA Key Pair Generated (2048-bit)');
+
+    // Save keys to file
+    try {
+        if (!fs.existsSync(KEYS_DIR)) {
+            fs.mkdirSync(KEYS_DIR, { recursive: true });
+        }
+        fs.writeFileSync(KEYS_FILE, JSON.stringify(RSA_KEYS, null, 2));
+        console.log('✅ RSA Key Pair Generated and Saved (2048-bit)');
+    } catch (error) {
+        console.error('❌ Failed to save RSA keys:', error.message);
+    }
+
     return RSA_KEYS;
 }
 
