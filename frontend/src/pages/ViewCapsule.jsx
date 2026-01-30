@@ -183,12 +183,12 @@ export default function ViewCapsule() {
                         </div>
 
                         <div className="alert alert-info" style={{ marginTop: '2rem' }}>
-                            <strong>🔐 Security Verification:</strong>
+                            <strong>🔐 Security Status:</strong>
                             <ul style={{ marginTop: '0.5rem', marginLeft: '1.5rem', marginBottom: 0 }}>
-                                <li>✅ Content decrypted using AES-256-CBC</li>
-                                <li>✅ AES key decrypted using RSA-2048 private key</li>
-                                <li>✅ SHA-256 hash verified (content integrity confirmed)</li>
-                                <li>✅ Digital signature verified (authenticity confirmed)</li>
+                                <li>✅ Content successfully decrypted</li>
+                                <li>✅ Encryption key verified and secure</li>
+                                <li>✅ Content integrity confirmed - no tampering detected</li>
+                                <li>✅ Authenticity verified with digital signature</li>
                             </ul>
                         </div>
                     </div>

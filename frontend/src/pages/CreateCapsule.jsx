@@ -97,11 +97,11 @@ export default function CreateCapsule() {
                             value={formData.content}
                             onChange={handleChange}
                             required
-                            placeholder="Write your message here... This will be encrypted using AES-256-CBC"
+                            placeholder="Write your message here... This will be securely encrypted"
                             rows={8}
                         />
                         <small style={{ color: 'var(--text-muted)' }}>
-                            Your message will be encrypted with AES-256-CBC. The encryption key will be secured with RSA-2048.
+                            Your message will be encrypted and secured until the unlock date.
                         </small>
                     </div>
 
@@ -122,13 +122,12 @@ export default function CreateCapsule() {
                     </div>
 
                     <div className="alert alert-info">
-                        <strong>🔒 Security Features:</strong>
-                        <ul style={{ marginTop: '0.5rem', marginLeft: '1.5rem' }}>
-                            <li>Content encrypted with AES-256-CBC</li>
-                            <li>Encryption key protected with RSA-2048</li>
-                            <li>Digital signature for integrity verification</li>
-                            <li>SHA-256 hash for tamper detection</li>
-                            <li>QR code generated for easy sharing</li>
+                        <strong>🔒 Your capsule will be:</strong>
+                        <ul style={{ marginTop: '0.5rem', marginLeft: '1.5rem', marginBottom: 0 }}>
+                            <li>Encrypted with military-grade security</li>
+                            <li>Protected with digital signatures</li>
+                            <li>Time-locked until your chosen date</li>
+                            <li>Equipped with QR code for easy sharing</li>
                         </ul>
                     </div>
 

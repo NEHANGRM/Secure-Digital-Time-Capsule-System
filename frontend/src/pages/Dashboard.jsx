@@ -133,24 +133,6 @@ export default function Dashboard() {
                     ))}
                 </div>
             )}
-
-            <div className="card" style={{ marginTop: '2rem' }}>
-                <h3>Security Features</h3>
-                <div className="grid grid-3" style={{ marginTop: '1rem' }}>
-                    <div>
-                        <h4 style={{ color: 'var(--accent-primary)' }}>🔐 Encrypted</h4>
-                        <p style={{ fontSize: '0.9rem' }}>AES-256-CBC + RSA hybrid encryption</p>
-                    </div>
-                    <div>
-                        <h4 style={{ color: 'var(--accent-success)' }}>✅ Verified</h4>
-                        <p style={{ fontSize: '0.9rem' }}>Digital signatures ensure integrity</p>
-                    </div>
-                    <div>
-                        <h4 style={{ color: 'var(--accent-secondary)' }}>⏰ Time-Locked</h4>
-                        <p style={{ fontSize: '0.9rem' }}>Unlocks only after chosen date</p>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 }
