@@ -137,7 +137,7 @@ router.post('/create', authenticate, requirePermission('canCreateCapsule'), uplo
 
         await tempCapsule.save();
 
-        // Encrypt content with capsule ID (using v2 - ECC by default)
+        // Encrypt content with capsule ID (using v1 - RSA - stable and tested)
         const {
             encryptedContent,
             encryptedAESKey,
@@ -146,7 +146,7 @@ router.post('/create', authenticate, requirePermission('canCreateCapsule'), uplo
             signature,
             qrCode,
             cryptoVersion
-        } = await encryptCapsuleContent(contentToEncrypt, tempCapsule._id.toString(), 'v2');
+        } = await encryptCapsuleContent(contentToEncrypt, tempCapsule._id.toString(), 'v1');
 
         // Update capsule with encrypted data
         tempCapsule.encryptedContent = encryptedContent;
@@ -155,7 +155,7 @@ router.post('/create', authenticate, requirePermission('canCreateCapsule'), uplo
         tempCapsule.contentHash = contentHash;
         tempCapsule.signature = signature;
         tempCapsule.qrCode = qrCode;
-        tempCapsule.cryptoVersion = cryptoVersion; // v2 for ECC
+        tempCapsule.cryptoVersion = cryptoVersion; // v1 for RSA (stable)
 
         await tempCapsule.save();
 

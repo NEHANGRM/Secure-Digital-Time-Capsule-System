@@ -242,7 +242,8 @@ export default function ViewCapsule() {
                                                     style={{
                                                         maxWidth: '100%',
                                                         maxHeight: '500px',
-                                                        borderRadius: '8px'
+                                                        borderRadius: '8px',
+                                                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
                                                     }}
                                                 />
                                             </div>
@@ -255,7 +256,8 @@ export default function ViewCapsule() {
                                                     style={{
                                                         maxWidth: '100%',
                                                         maxHeight: '500px',
-                                                        borderRadius: '8px'
+                                                        borderRadius: '8px',
+                                                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
                                                     }}
                                                 >
                                                     <source
@@ -267,8 +269,47 @@ export default function ViewCapsule() {
                                             </div>
                                         )}
 
+                                        {/* PDF Preview */}
+                                        {parsedContent.file.fileType === 'application/pdf' && (
+                                            <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                                                <iframe
+                                                    src={`data:application/pdf;base64,${parsedContent.file.fileData}`}
+                                                    style={{
+                                                        width: '100%',
+                                                        height: '600px',
+                                                        border: '1px solid var(--glass-border)',
+                                                        borderRadius: '8px'
+                                                    }}
+                                                    title={parsedContent.file.fileName}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* Document Icon for non-previewable files */}
+                                        {!parsedContent.file.fileType.startsWith('image/') &&
+                                            !parsedContent.file.fileType.startsWith('video/') &&
+                                            parsedContent.file.fileType !== 'application/pdf' && (
+                                                <div style={{
+                                                    textAlign: 'center',
+                                                    padding: '2rem',
+                                                    marginBottom: '1rem',
+                                                    background: 'var(--bg-secondary)',
+                                                    borderRadius: '8px'
+                                                }}>
+                                                    <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>📄</div>
+                                                    <p style={{ color: 'var(--text-muted)' }}>
+                                                        Document ready for download
+                                                    </p>
+                                                </div>
+                                            )}
+
                                         {/* File Info */}
-                                        <div style={{ marginTop: '1rem' }}>
+                                        <div style={{
+                                            marginTop: '1rem',
+                                            padding: '1rem',
+                                            background: 'var(--bg-secondary)',
+                                            borderRadius: '8px'
+                                        }}>
                                             <p style={{ marginBottom: '0.5rem' }}>
                                                 <strong>📎 File Name:</strong> {parsedContent.file.fileName}
                                             </p>
@@ -282,9 +323,9 @@ export default function ViewCapsule() {
                                             <button
                                                 onClick={downloadFile}
                                                 className="btn btn-primary"
-                                                style={{ width: '100%' }}
+                                                style={{ width: '100%', fontSize: '1.1rem', padding: '0.75rem' }}
                                             >
-                                                📥 Download File
+                                                📥 Download {parsedContent.file.fileName}
                                             </button>
                                         </div>
                                     </div>
@@ -295,9 +336,9 @@ export default function ViewCapsule() {
                                 <strong>🔐 Security Status:</strong>
                                 <ul style={{ marginTop: '0.5rem', marginLeft: '1.5rem', marginBottom: 0 }}>
                                     <li>✅ Content successfully decrypted</li>
-                                    <li>✅ Encryption key verified and secure (ECC P-256)</li>
+                                    <li>✅ RSA-2048 encryption verified and secure</li>
                                     <li>✅ Content integrity confirmed - no tampering detected</li>
-                                    <li>✅ Authenticity verified with digital signature (ECDSA)</li>
+                                    <li>✅ Authenticity verified with digital signature (RSA)</li>
                                     {isFileContent && <li>✅ File decrypted and ready for download</li>}
                                 </ul>
                             </div>

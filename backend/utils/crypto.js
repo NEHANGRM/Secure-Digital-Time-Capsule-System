@@ -379,11 +379,18 @@ function createDigitalSignatureECC(contentHash) {
  * Verifies digital signature using ECC public key
  */
 function verifyDigitalSignatureECC(contentHash, signature) {
-    const verify = crypto.createVerify('SHA256');
-    verify.update(contentHash);
-    verify.end();
+    try {
+        const verify = crypto.createVerify('SHA256');
+        verify.update(contentHash);
+        verify.end();
 
-    return verify.verify(getECCPublicKey(), signature, 'base64');
+        const result = verify.verify(getECCPublicKey(), signature, 'base64');
+        console.log('🔍 ECC Signature Verification:', result ? '✅ Valid' : '❌ Invalid');
+        return result;
+    } catch (error) {
+        console.error('❌ ECC signature verification error:', error.message);
+        return false;
+    }
 }
 
 /**
@@ -435,12 +442,12 @@ async function generateQRCode(data) {
 }
 
 /**
- * COMPLETE ENCRYPTION WORKFLOW (v2 - ECC)
+ * COMPLETE ENCRYPTION WORKFLOW (RSA - Default)
  * 
  * Encrypts content and returns all necessary data for storage
- * Uses ECC P-256 for hybrid encryption (new default)
+ * Uses RSA-2048 for hybrid encryption (stable and tested)
  */
-async function encryptCapsuleContent(content, capsuleId, version = 'v2') {
+async function encryptCapsuleContent(content, capsuleId, version = 'v1') {
     // Step 1: Hash the original content (for integrity verification)
     const contentHash = hashContent(content);
 
