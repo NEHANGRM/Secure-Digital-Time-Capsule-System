@@ -158,41 +158,152 @@ export default function ViewCapsule() {
                 )}
 
                 {/* Unlocked State */}
-                {capsule.isUnlocked && capsule.content && (
-                    <div>
-                        <div className="alert alert-success">
-                            <strong>✅ Capsule Unlocked & Verified</strong>
-                            <p style={{ marginTop: '0.5rem', marginBottom: 0 }}>
-                                Content decrypted successfully. Digital signature verified.
-                            </p>
-                        </div>
+                {capsule.isUnlocked && capsule.content && (() => {
+                    // Try to parse content as JSON (for files)
+                    let parsedContent = null;
+                    let isFileContent = false;
+                    try {
+                        parsedContent = JSON.parse(capsule.content);
+                        isFileContent = parsedContent && parsedContent.file;
+                    } catch (e) {
+                        // Not JSON, treat as plain text
+                        parsedContent = null;
+                    }
 
-                        <div style={{ marginTop: '2rem' }}>
-                            <h3>Decrypted Content</h3>
-                            <div style={{
-                                background: 'var(--bg-tertiary)',
-                                padding: 'var(--spacing-md)',
-                                borderRadius: 'var(--radius-sm)',
-                                border: '1px solid var(--glass-border)',
-                                marginTop: 'var(--spacing-sm)',
-                                whiteSpace: 'pre-wrap',
-                                wordBreak: 'break-word'
-                            }}>
-                                {capsule.content}
+                    const downloadFile = () => {
+                        if (!parsedContent || !parsedContent.file) return;
+
+                        const { fileName, fileType, fileData } = parsedContent.file;
+
+                        // Convert base64 to blob
+                        const byteCharacters = atob(fileData);
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) {
+                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+                        const blob = new Blob([byteArray], { type: fileType });
+
+                        // Create download link
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = fileName;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        window.URL.revokeObjectURL(url);
+                    };
+
+                    return (
+                        <div>
+                            <div className="alert alert-success">
+                                <strong>✅ Capsule Unlocked & Verified</strong>
+                                <p style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                                    Content decrypted successfully. Digital signature verified.
+                                </p>
+                            </div>
+
+                            {/* Text Message */}
+                            {(isFileContent ? parsedContent.message : true) && (
+                                <div style={{ marginTop: '2rem' }}>
+                                    <h3>Message</h3>
+                                    <div style={{
+                                        background: 'var(--bg-tertiary)',
+                                        padding: 'var(--spacing-md)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid var(--glass-border)',
+                                        marginTop: 'var(--spacing-sm)',
+                                        whiteSpace: 'pre-wrap',
+                                        wordBreak: 'break-word'
+                                    }}>
+                                        {isFileContent ? (parsedContent.message || 'No message') : capsule.content}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* File Content */}
+                            {isFileContent && parsedContent.file && (
+                                <div style={{ marginTop: '2rem' }}>
+                                    <h3>Attached File</h3>
+                                    <div style={{
+                                        background: 'var(--bg-tertiary)',
+                                        padding: 'var(--spacing-md)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid var(--glass-border)',
+                                        marginTop: 'var(--spacing-sm)'
+                                    }}>
+                                        {/* File Preview based on type */}
+                                        {parsedContent.file.fileType.startsWith('image/') && (
+                                            <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                                                <img
+                                                    src={`data:${parsedContent.file.fileType};base64,${parsedContent.file.fileData}`}
+                                                    alt={parsedContent.file.fileName}
+                                                    style={{
+                                                        maxWidth: '100%',
+                                                        maxHeight: '500px',
+                                                        borderRadius: '8px'
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {parsedContent.file.fileType.startsWith('video/') && (
+                                            <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                                                <video
+                                                    controls
+                                                    style={{
+                                                        maxWidth: '100%',
+                                                        maxHeight: '500px',
+                                                        borderRadius: '8px'
+                                                    }}
+                                                >
+                                                    <source
+                                                        src={`data:${parsedContent.file.fileType};base64,${parsedContent.file.fileData}`}
+                                                        type={parsedContent.file.fileType}
+                                                    />
+                                                    Your browser does not support the video tag.
+                                                </video>
+                                            </div>
+                                        )}
+
+                                        {/* File Info */}
+                                        <div style={{ marginTop: '1rem' }}>
+                                            <p style={{ marginBottom: '0.5rem' }}>
+                                                <strong>📎 File Name:</strong> {parsedContent.file.fileName}
+                                            </p>
+                                            <p style={{ marginBottom: '0.5rem' }}>
+                                                <strong>📄 File Type:</strong> {parsedContent.file.fileType}
+                                            </p>
+                                            <p style={{ marginBottom: '1rem' }}>
+                                                <strong>💾 File Size:</strong> {(parsedContent.file.fileSize / 1024).toFixed(2)} KB
+                                            </p>
+
+                                            <button
+                                                onClick={downloadFile}
+                                                className="btn btn-primary"
+                                                style={{ width: '100%' }}
+                                            >
+                                                📥 Download File
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="alert alert-info" style={{ marginTop: '2rem' }}>
+                                <strong>🔐 Security Status:</strong>
+                                <ul style={{ marginTop: '0.5rem', marginLeft: '1.5rem', marginBottom: 0 }}>
+                                    <li>✅ Content successfully decrypted</li>
+                                    <li>✅ Encryption key verified and secure (ECC P-256)</li>
+                                    <li>✅ Content integrity confirmed - no tampering detected</li>
+                                    <li>✅ Authenticity verified with digital signature (ECDSA)</li>
+                                    {isFileContent && <li>✅ File decrypted and ready for download</li>}
+                                </ul>
                             </div>
                         </div>
-
-                        <div className="alert alert-info" style={{ marginTop: '2rem' }}>
-                            <strong>🔐 Security Status:</strong>
-                            <ul style={{ marginTop: '0.5rem', marginLeft: '1.5rem', marginBottom: 0 }}>
-                                <li>✅ Content successfully decrypted</li>
-                                <li>✅ Encryption key verified and secure</li>
-                                <li>✅ Content integrity confirmed - no tampering detected</li>
-                                <li>✅ Authenticity verified with digital signature</li>
-                            </ul>
-                        </div>
-                    </div>
-                )}
+                    );
+                })()}
             </div>
         </div>
     );

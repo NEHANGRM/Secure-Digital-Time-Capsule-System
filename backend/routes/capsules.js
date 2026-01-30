@@ -10,11 +10,44 @@
 
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const Capsule = require('../models/Capsule');
 const AuditLog = require('../models/AuditLog');
 const authenticate = require('../middleware/auth');
 const { requirePermission, canAccessCapsule } = require('../middleware/rbac');
 const { encryptCapsuleContent, decryptCapsuleContent } = require('../utils/crypto');
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadDir = path.join(__dirname, '../uploads');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|gif|webp|mp4|webm|mov|pdf|doc|docx|txt/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        if (mimetype && extname) {
+            return cb(null, true);
+        }
+        cb(new Error('Invalid file type. Allowed: images, videos, PDF, DOC, TXT'));
+    }
+});
 
 /**
  * CREATE TIME CAPSULE
@@ -25,15 +58,15 @@ const { encryptCapsuleContent, decryptCapsuleContent } = require('../utils/crypt
  * - Digital signature is created for integrity
  * - QR code is generated for sharing
  */
-router.post('/create', authenticate, requirePermission('canCreateCapsule'), async (req, res) => {
+router.post('/create', authenticate, requirePermission('canCreateCapsule'), upload.single('file'), async (req, res) => {
     try {
-        const { title, content, unlockDate, type } = req.body;
+        const { title, content, unlockDate, type, fileName, fileType } = req.body;
 
         // Validation
-        if (!title || !content || !unlockDate) {
+        if (!title || !unlockDate) {
             return res.status(400).json({
                 success: false,
-                message: 'Title, content, and unlock date are required.'
+                message: 'Title and unlock date are required.'
             });
         }
 
@@ -47,11 +80,44 @@ router.post('/create', authenticate, requirePermission('canCreateCapsule'), asyn
             });
         }
 
+        let contentToEncrypt = content;
+        let capsuleType = type || 'text';
+        let fileData = null;
+
+        // If file is uploaded, read and encode it
+        if (req.file) {
+            const fileBuffer = fs.readFileSync(req.file.path);
+            const base64File = fileBuffer.toString('base64');
+
+            fileData = {
+                fileName: req.file.originalname,
+                fileType: req.file.mimetype,
+                fileSize: req.file.size,
+                fileData: base64File
+            };
+
+            // Combine text content and file data
+            contentToEncrypt = JSON.stringify({
+                message: content || '',
+                file: fileData
+            });
+
+            capsuleType = 'file';
+
+            // Delete the uploaded file after reading
+            fs.unlinkSync(req.file.path);
+        } else if (!content) {
+            return res.status(400).json({
+                success: false,
+                message: 'Either content or file is required.'
+            });
+        }
+
         // Create temporary capsule to get ID
         const tempCapsule = new Capsule({
             owner: req.user._id,
             title,
-            type: type || 'text',
+            type: capsuleType,
             unlockDate: unlock,
             // Temporary values (will be replaced)
             encryptedContent: 'temp',
@@ -62,17 +128,25 @@ router.post('/create', authenticate, requirePermission('canCreateCapsule'), asyn
             qrCode: 'temp'
         });
 
+        // Add file metadata if file is present
+        if (fileData) {
+            tempCapsule.fileName = fileData.fileName;
+            tempCapsule.fileType = fileData.fileType;
+            tempCapsule.fileSize = fileData.fileSize;
+        }
+
         await tempCapsule.save();
 
-        // Encrypt content with capsule ID
+        // Encrypt content with capsule ID (using v2 - ECC by default)
         const {
             encryptedContent,
             encryptedAESKey,
             iv,
             contentHash,
             signature,
-            qrCode
-        } = await encryptCapsuleContent(content, tempCapsule._id.toString());
+            qrCode,
+            cryptoVersion
+        } = await encryptCapsuleContent(contentToEncrypt, tempCapsule._id.toString(), 'v2');
 
         // Update capsule with encrypted data
         tempCapsule.encryptedContent = encryptedContent;
@@ -81,6 +155,7 @@ router.post('/create', authenticate, requirePermission('canCreateCapsule'), asyn
         tempCapsule.contentHash = contentHash;
         tempCapsule.signature = signature;
         tempCapsule.qrCode = qrCode;
+        tempCapsule.cryptoVersion = cryptoVersion; // v2 for ECC
 
         await tempCapsule.save();
 
@@ -88,10 +163,10 @@ router.post('/create', authenticate, requirePermission('canCreateCapsule'), asyn
         await AuditLog.create({
             user: req.user._id,
             action: 'CAPSULE_CREATE',
-            details: `Created capsule: ${title}`,
+            details: `Created capsule: ${title}${fileData ? ' (with file)' : ''}`,
             ipAddress: req.ip,
             userAgent: req.headers['user-agent'],
-            metadata: { capsuleId: tempCapsule._id }
+            metadata: { capsuleId: tempCapsule._id, hasFile: !!fileData }
         });
 
         res.status(201).json({
@@ -102,12 +177,19 @@ router.post('/create', authenticate, requirePermission('canCreateCapsule'), asyn
                 title: tempCapsule.title,
                 unlockDate: tempCapsule.unlockDate,
                 qrCode: tempCapsule.qrCode,
-                timeRemaining: tempCapsule.getTimeRemaining()
+                timeRemaining: tempCapsule.getTimeRemaining(),
+                hasFile: !!fileData
             }
         });
 
     } catch (error) {
         console.error('Create capsule error:', error);
+
+        // Clean up uploaded file if it exists
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+
         res.status(500).json({
             success: false,
             message: 'Failed to create capsule.',
@@ -201,13 +283,15 @@ router.get('/:id', authenticate, canAccessCapsule, async (req, res) => {
         }
 
         // Capsule is unlocked - decrypt content
+        // Auto-detect version: default to v1 (RSA) if not specified for backward compatibility
         try {
             const { content, verified } = decryptCapsuleContent(
                 capsule.encryptedContent,
                 capsule.encryptedAESKey,
                 capsule.iv,
                 capsule.contentHash,
-                capsule.signature
+                capsule.signature,
+                capsule.cryptoVersion || 'v1' // Use v1 (RSA) for old capsules without version field
             );
 
             // Log capsule view
